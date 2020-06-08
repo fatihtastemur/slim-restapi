@@ -1,59 +1,37 @@
+<?php
+declare(strict_types=1);
 
-#### Create Project
-```bash
-$ php composer.phar create-project slim/slim-skeleton slim-restapi
-```
-
-#### Run
-```bash
-$ php -S localhost:8080 -t public public/index.php
-```
-
-Open browser [http://localhost:8080/](http://localhost:8080/)
+use App\Application\Actions\User\ListUsersAction;
+use App\Application\Actions\User\ViewUserAction;
+use Psr\Http\Message\ResponseInterface as Response;
+use Psr\Http\Message\ServerRequestInterface as Request;
+use Slim\App;
+use Slim\Interfaces\RouteCollectorProxyInterface as Group;
 
 
-**app/settings.php**
-```php
-'db'=> [
-        'host' => DBHOST,
-        'dbname' => DBNAME,
-        'user' => DBUSER,
-        'pass' => DBPASS
-    ],
-```
+return function (App $app) {
+    $app->options('/{routes:.*}', function (Request $request, Response $response) {
+        // CORS Pre-Flight OPTIONS Request Handler
+        return $response;
+    });
 
-**app/dependencies.php**
-```php
-$containerBuilder->addDefinitions([
-        'db' => function (ContainerInterface $c) {
-            $settings = $c->get('settings');
-            $dbSettings = $settings['db'];
+    $app->get('/', function (Request $request, Response $response) {
+        $response->getBody()->write('Hello world!');
+        return $response;
+    });
 
-            $pdo = new PDO("mysql:host=" . $dbSettings['host'] . ";dbname=" . $dbSettings['dbname'], $dbSettings['user'], $dbSettings['pass']);
-            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-            return $pdo;
-        },
-    ]);
-```
+    $app->get("/hello[/{name}]", function (Request $request, Response $response) {
+        $name = $request->getAttribute('name');
+        $response->getBody()->write("Hello $name");
+        return $response;
+    });
 
-#### Create DB Table
-```sql
-CREATE TABLE books (
-	id BIGINT NOT NULL,
-	book_name VARCHAR(255),
-	book_author VARCHAR(255),
-	book_page INT,
-	CONSTRAINT `PRIMARY` PRIMARY KEY (id)
-);
-```
+    $app->group('/users', function (Group $group) {
+        $group->get('', ListUsersAction::class);
+        $group->get('/{id}', ViewUserAction::class);
+    });
 
-#### Get All Books [GET]
-Postman Request [http://localhost:8080/allbooks](http://localhost:8080/allbooks)
-
-**app/routes.php**
-```php
-$app->get('/allbooks', function (Request $request, Response $response, $args) {
+     $app->get('/allbooks', function (Request $request, Response $response, $args) {
          $db = $this->get('db');
          $sth = $db->prepare("SELECT * FROM books" );
          $sth->execute();
@@ -72,14 +50,8 @@ $app->get('/allbooks', function (Request $request, Response $response, $args) {
              return $response;
          }
      });
-```
 
-#### Get Book With ID [GET]
-Postman Request [http://localhost:8080/book/19](http://localhost:8080/book/19)
-
-**app/routes.php**
-```php
-$app->get('/book/{id}', function (Request $request, Response $response, $args) {
+    $app->get('/book/{id}', function (Request $request, Response $response, $args) {
         $id = $request->getAttribute('id');
 
         $db = $this->get('db');
@@ -100,24 +72,8 @@ $app->get('/book/{id}', function (Request $request, Response $response, $args) {
             return $response;
         }
     });
-```
 
-#### Add Book [POST]
-Postman Request [http://localhost:8080/addbook](http://localhost:8080/addbook)
-
-Json Data
-```json
-{
-  "book_name":"Test Book",
-  "book_author":"Author",
-  "book_page":358
-}
-
-```
-
-**app/routes.php**
-```php
-$app->post('/addbook', function (Request $request, Response $response, $args) {
+    $app->post('/addbook', function (Request $request, Response $response, $args) {
 
        try{
 
@@ -151,4 +107,4 @@ $app->post('/addbook', function (Request $request, Response $response, $args) {
            echo $ex->getMessage();
        }
     });
-```
+};
